@@ -90,6 +90,10 @@ contract MultiSigWallet is IWalletEvents, IWalletSettings {
 
     function deleteOwner(address _owner) external override onlyFactory {
         require(isOwner[_owner], "owner does not exist");
+        require(
+            ownersCount >= numConfirmationsRequired + 1,
+            "owners count lower then confirmations required"
+        );
 
         ownersCount -= 1;
         isOwner[_owner] = false;
