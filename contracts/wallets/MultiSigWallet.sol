@@ -70,6 +70,7 @@ contract MultiSigWallet is IWalletEvents, IWalletSettings {
             owners.push(owner);
         }
 
+        ownersCount = _owners.length;
         numConfirmationsRequired = _numConfirmationsRequired;
 
         factory = msg.sender;
@@ -83,12 +84,14 @@ contract MultiSigWallet is IWalletEvents, IWalletSettings {
         require(!isOwner[_owner], "owner already exists");
 
         owners.push(_owner);
+        ownersCount += 1;
         isOwner[_owner] = true;
     }
 
     function deleteOwner(address _owner) external override onlyFactory {
         require(isOwner[_owner], "owner does not exist");
 
+        ownersCount -= 1;
         isOwner[_owner] = false;
     }
 
@@ -97,7 +100,7 @@ contract MultiSigWallet is IWalletEvents, IWalletSettings {
     ) external override onlyFactory {
         require(
             _numConfirmationsRequired > 0 &&
-                _numConfirmationsRequired <= owners.length,
+                _numConfirmationsRequired <= ownersCount,
             "invalid number of required confirmations"
         );
 
