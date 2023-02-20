@@ -127,13 +127,13 @@ describe("MultiSigWallet", () => {
                 expect(ownersGet[i]).to.be.equal(OWNERS[i + 1]);
             });
 
-            // await wallet.addOwner(OWNERS[0]);
-            // ownersGet = await wallet.getOwners();
-            // expect(ownersGet.length).to.be.equal(OWNERS.length);
-            // console.log(ownersGet)
-            // ownersGet.forEach((_: any, i: number) => {
-            //     expect(ownersGet[i]).to.be.equal(OWNERS[i]);
-            // });
+            await wallet.addOwner(OWNERS[0]);
+            ownersGet = await wallet.getOwners();
+            expect(ownersGet.length).to.be.equal(OWNERS.length);
+            console.log(ownersGet)
+            ownersGet.forEach((_: any, i: number) => {
+                expect(ownersGet[i]).to.be.equal(OWNERS[i]);
+            });
         })
     })
 })

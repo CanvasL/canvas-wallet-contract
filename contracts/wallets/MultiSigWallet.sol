@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 import {IMultiSigWallet} from "../interface/IMultiSigWallet.sol";
 
 // Uncomment this line to use console.log
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract MultiSigWallet is IMultiSigWallet {
     address immutable factory;
@@ -112,7 +112,9 @@ contract MultiSigWallet is IMultiSigWallet {
             revert OwnerAlreadyExsits(_owner);
         }
 
-        owners.push(_owner);
+        if (!_ownerExists(_owner)) {
+            owners.push(_owner);
+        }
         ownersCount += 1;
         isOwner[_owner] = true;
     }
@@ -150,13 +152,11 @@ contract MultiSigWallet is IMultiSigWallet {
     function getOwners() public view returns (address[] memory) {
         address[] memory _owners = new address[](ownersCount);
         uint j = 0;
-        console.log("owners: ");
         for (uint i = 0; i < owners.length; i++) {
             address owner = owners[i];
             if (isOwner[owner]) {
                 _owners[j] = owner;
                 j++;
-                console.log("%s,", owner);
             }
         }
         return _owners;
@@ -246,5 +246,14 @@ contract MultiSigWallet is IMultiSigWallet {
         isConfirmed[_txIndex][msg.sender] = false;
 
         emit RevokeConfirmation(msg.sender, _txIndex);
+    }
+
+    function _ownerExists(address _owner) view private returns (bool) {
+        for (uint i = 0; i < owners.length; i++) {
+            if (_owner == owners[i]) {
+                return true;
+            }
+        }
+        return false;
     }
 }
