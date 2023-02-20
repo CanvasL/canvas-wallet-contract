@@ -218,7 +218,7 @@ contract MultiSigWallet is IMultiSigWallet {
         Transaction storage transaction = transactions[_txIndex];
 
         if (transaction.numConfirmations < numConfirmationsRequired) {
-            revert TransactionInvalidConfirmations(_txIndex);
+            revert TransactionLackConfirmations(_txIndex);
         }
 
         transaction.executed = true;

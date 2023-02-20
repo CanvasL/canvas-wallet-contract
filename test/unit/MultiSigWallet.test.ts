@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { BigNumber, Contract } from "ethers";
 import { ethers } from "hardhat";
 
 describe("MultiSigWallet", () => {
@@ -8,10 +9,10 @@ describe("MultiSigWallet", () => {
         '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'
     ];
     const NEW_OWNER = "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199";
-
     const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-    let MultiSigWallet: any, wallet: any;
-    let Target: any, target: any;
+    let signer1: any, signer2: any, signer3: any, newSigner: any;
+    let MultiSigWallet: any, wallet: Contract;
+    let Target: any, target: Contract;
 
     before(async () => {
         MultiSigWallet = await ethers.getContractFactory('MultiSigWallet');
@@ -21,11 +22,14 @@ describe("MultiSigWallet", () => {
     beforeEach(async () => {
         wallet = await MultiSigWallet.deploy(OWNERS, 2);
         target = await Target.deploy();
+
+        [signer1, signer2, signer3, newSigner] = await Promise.all(
+            [...OWNERS, NEW_OWNER].map(async (addr) => await ethers.getSigner(addr))
+        );
     })
 
     describe('#addOwner()', () => {
         it('Should call by factory', async () => {
-            const newSigner = await ethers.getSigner(NEW_OWNER);
             await expect(wallet.connect(newSigner).addOwner(NEW_OWNER)).to.be.revertedWithCustomError(
                 wallet,
                 'NotFactory'
@@ -56,7 +60,6 @@ describe("MultiSigWallet", () => {
 
     describe('#deleteOwner()', () => {
         it('Should call by factory', async () => {
-            const newSigner = await ethers.getSigner(NEW_OWNER);
             await expect(wallet.connect(newSigner).deleteOwner(NEW_OWNER)).to.be.revertedWithCustomError(
                 wallet,
                 'NotFactory'
@@ -86,7 +89,6 @@ describe("MultiSigWallet", () => {
 
     describe('#setNumConfirmationsRequired()', () => {
         it('Should call by factory', async () => {
-            const newSigner = await ethers.getSigner(NEW_OWNER);
             await expect(wallet.connect(newSigner).setNumConfirmationsRequired(3)).to.be.revertedWithCustomError(
                 wallet,
                 'NotFactory'
@@ -139,11 +141,9 @@ describe("MultiSigWallet", () => {
 
     describe('#submitTransaction', () => {
         it('Should call by owner', async () => {
-            const signer = await ethers.getSigner(NEW_OWNER);
-
-            await expect(wallet.connect(signer).submitTransaction(
+            await expect(wallet.connect(newSigner).submitTransaction(
                 target.address,
-                ethers.BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(18),
                 '0x'
             )).to.be.revertedWithCustomError(
                 wallet,
@@ -152,20 +152,18 @@ describe("MultiSigWallet", () => {
         })
 
         it('Succeed', async () => {
-            const signer = await ethers.getSigner(OWNERS[0]);
-
-            await expect(wallet.connect(signer).submitTransaction(
+            await expect(wallet.connect(signer1).submitTransaction(
                 target.address,
-                ethers.BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(18),
                 '0x'
             )).to.emit(
                 wallet,
                 'SubmitTransaction'
             ).withArgs(
-                signer.address,
+                signer1.address,
                 0,
                 target.address,
-                ethers.BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(18),
                 '0x'
             );
         })
@@ -173,121 +171,187 @@ describe("MultiSigWallet", () => {
 
     describe('#confirmTransaction', () => {
         beforeEach(async () => {
-            const signer = await ethers.getSigner(OWNERS[0]);
-            await wallet.connect(signer).submitTransaction(
+            await wallet.connect(signer1).submitTransaction(
                 target.address,
-                ethers.BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(18),
                 '0x'
             );
         })
 
         it('Should call by owner', async () => {
-            const signer = await ethers.getSigner(NEW_OWNER);
-
-            await expect(wallet.connect(signer).confirmTransaction(1)).to.be.revertedWithCustomError(
+            await expect(wallet.connect(newSigner).confirmTransaction(1)).to.be.revertedWithCustomError(
                 wallet,
                 'NotOwner'
             );
         })
 
         it('Should give existing tx index', async () => {
-            const signer = await ethers.getSigner(OWNERS[1]);
-
-            await expect(wallet.connect(signer).confirmTransaction(1)).to.be.revertedWithCustomError(
+            await expect(wallet.connect(signer2).confirmTransaction(1)).to.be.revertedWithCustomError(
                 wallet,
                 'TransactionNotExsits'
             );
         })
 
         it('Should not be tag to confirmed', async () => {
-            const signer = await ethers.getSigner(OWNERS[1]);
-
-            await expect(wallet.connect(signer).confirmTransaction(0)).to.emit(
+            await expect(wallet.connect(signer2).confirmTransaction(0)).to.emit(
                 wallet,
                 'ConfirmTransaction'
             ).withArgs(
-                signer.address,
+                signer2.address,
                 0
             );
 
-            await expect(wallet.connect(signer).confirmTransaction(0)).to.be.revertedWithCustomError(
+            await expect(wallet.connect(signer2).confirmTransaction(0)).to.be.revertedWithCustomError(
                 wallet,
                 'TransactionAlreadyConfirmed'
             );
         })
 
         it('Succeed', async () => {
-            const signer = await ethers.getSigner(OWNERS[1]);
-
-            await expect(wallet.connect(signer).confirmTransaction(0)).to.emit(
+            await expect(wallet.connect(signer2).confirmTransaction(0)).to.emit(
                 wallet,
                 'ConfirmTransaction'
             ).withArgs(
-                signer.address,
+                signer2.address,
                 0
             );
         })
     })
 
-    describe('revokeConfirmation', () => {
+    describe('#revokeConfirmation', () => {
         beforeEach(async () => {
-            const proposer = await ethers.getSigner(OWNERS[0]);
-            await wallet.connect(proposer).submitTransaction(
+            await wallet.connect(signer1).submitTransaction(
                 target.address,
-                ethers.BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(18),
                 '0x'
             );
-            await wallet.connect(proposer).confirmTransaction(0);
-
-            const signer1 = await ethers.getSigner(OWNERS[1]);
             await wallet.connect(signer1).confirmTransaction(0);
+            await wallet.connect(signer2).confirmTransaction(0);
         })
 
         it('Should call by owner', async () => {
-            const signer = await ethers.getSigner(NEW_OWNER);
-
-            await expect(wallet.connect(signer).revokeConfirmation(0)).to.be.revertedWithCustomError(
+            await expect(wallet.connect(newSigner).revokeConfirmation(0)).to.be.revertedWithCustomError(
                 wallet,
                 'NotOwner'
             );
         })
 
         it('Succeed', async () => {
-            const signer1 = await ethers.getSigner(OWNERS[1]);
-            await expect(wallet.connect(signer1).revokeConfirmation(0)).to.emit(
+            await expect(wallet.connect(signer2).revokeConfirmation(0)).to.emit(
                 wallet,
                 'RevokeConfirmation'
             ).withArgs(
-                signer1.address, 
+                signer2.address,
                 0
             );
         })
     })
 
-    describe('executeTransaction', () => {
-        beforeEach(() => {
+    describe('#executeTransaction', () => {
+        context('When transfer funds', () => {
+            beforeEach(async () => {
+                await wallet.connect(signer1).submitTransaction(
+                    target.address,
+                    BigNumber.from(10).pow(18),
+                    '0x'
+                );
+                await wallet.connect(signer1).confirmTransaction(0);
+            })
 
+            it('Should call by owner', async () => {
+                await expect(wallet.connect(newSigner).executeTransaction(0)).to.be.revertedWithCustomError(
+                    wallet,
+                    'NotOwner'
+                );
+            })
+
+            it('Should integrage require confirmations', async () => {
+                await expect(wallet.connect(signer2).executeTransaction(0)).to.be.revertedWithCustomError(
+                    wallet,
+                    'TransactionLackConfirmations'
+                );
+            })
+
+            it('Should give a unexecuted transaction', async () => {
+                await wallet.connect(signer2).confirmTransaction(0);
+                // await wallet.connect(signer2).executeTransaction(0);
+
+                // await expect(wallet.executeTransaction(0)).to.be.revertedWithCustomError(
+                //     wallet,
+                //     'TransactionAlreadyExecuted'
+                // ).withArgs(
+                //     0
+                // );
+            })
+
+            it('Succeed', async () => {
+                // const balance = await ethers.provider.getBalance(signer1.address);
+                // console.log(`当前帐户的余额为：${balance.toString()}`);
+
+                await wallet.connect(signer2).confirmTransaction(0);
+                await expect(wallet.connect(signer1).executeTransaction(0)).to.emit(
+                    wallet,
+                    'ExecuteTransaction'
+                ).withArgs(
+                    signer1.address,
+                    0
+                );
+            })
         })
 
-        it('Should call by owner', async () => {
-            const signer = await ethers.getSigner(NEW_OWNER);
+        context('When execute function', () => {
+            // const data = target.interface.encodeFunctionData("add", [BigNumber.from(1)]);
+            const ABI = ['function add(uint256 _num)'];
+            const iface = new ethers.utils.Interface(ABI);
+            const data = iface.encodeFunctionData('add', [BigNumber.from(1)]);
 
-            await expect(wallet.connect(signer).executeTransaction(0)).to.be.revertedWithCustomError(
-                wallet,
-                'NotOwner'
-            );
+            beforeEach(async () => {
+                await wallet.connect(signer1).submitTransaction(
+                    target.address,
+                    0,
+                    data
+                );
+                await wallet.connect(signer1).confirmTransaction(0);
+            })
+
+            it('Should call by owner', async () => {
+                await expect(wallet.connect(newSigner).executeTransaction(0)).to.be.revertedWithCustomError(
+                    wallet,
+                    'NotOwner'
+                );
+            })
+
+            it('Should integrage require confirmations', async () => {
+                await expect(wallet.connect(signer2).executeTransaction(0)).to.be.revertedWithCustomError(
+                    wallet,
+                    'TransactionLackConfirmations'
+                );
+            })
+
+            it('Should give a unexecuted transaction', async () => {
+                await wallet.connect(signer2).confirmTransaction(0);
+                await wallet.connect(signer2).executeTransaction(0);
+
+                await expect(wallet.executeTransaction(0)).to.be.revertedWithCustomError(
+                    wallet,
+                    'TransactionAlreadyExecuted'
+                ).withArgs(
+                    0
+                );
+            })
+
+            it('Succeed', async () => {
+                await wallet.connect(signer2).confirmTransaction(0);
+                await expect(wallet.connect(signer2).executeTransaction(0)).to.emit(
+                    wallet,
+                    'ExecuteTransaction'
+                ).withArgs(
+                    signer2.address,
+                    0
+                );
+                expect(await target.num()).to.be.equal(1);
+            })
         })
 
-        it('Should integrage require confirmations', async () => {
-
-        })
-
-        it('Succeed when transfer funds', async () => {
-
-        })
-
-        it('Succeed when execute function', async () => {
-
-        })
     })
 })

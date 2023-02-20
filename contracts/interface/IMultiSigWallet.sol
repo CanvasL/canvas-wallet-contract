@@ -9,7 +9,7 @@ interface IMultiSigWallet is Errors {
     error OwnerNotExsits(address owner);
     error DeleteUnavailable();
     error TransactionNotExsits(uint256 txIndex);
-    error TransactionInvalidConfirmations(uint256 txIndex);
+    error TransactionLackConfirmations(uint256 txIndex);
     error TransactionNotConfirmed(uint256 txIndex, address owner);
     error TransactionAlreadyConfirmed(uint256 txIndex);
     error TransactionExecutedFailed(uint256 txIndex);
