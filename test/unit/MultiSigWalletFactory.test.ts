@@ -25,31 +25,34 @@ describe('MultiSigWalletFactory', async () => {
             '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'
         ];
 
-        it('Should set right owners array', async () => {
+        it('Should set valid owners array', async () => {
             const numConfirmations = 1;
-            await expect(factory.createMultiSigWallet(emptyOwners, numConfirmations)).to.be.revertedWith(
-                'The wallet must have at least one owner'
+            await expect(factory.createMultiSigWallet(emptyOwners, numConfirmations)).to.be.revertedWithCustomError(
+                factory,
+                'InvalidOwnerLength'
             );
         })
         it('Should contain valid owner address', async () => {
             const numConfirmations = 1;
-            await expect(factory.createMultiSigWallet(ownersContainZeroAddress, numConfirmations)).to.be.revertedWith(
-                'Invalid owner address'
+            await expect(factory.createMultiSigWallet(ownersContainZeroAddress, numConfirmations)).to.be.revertedWithCustomError(
+                factory,
+                'ZeroAddress'
             );
         })
-        it('Should set right required confirmations', async () => {
+        it('Should set valid required confirmations', async () => {
             const numConfirmations = 4;
-            await expect(factory.createMultiSigWallet(owners, numConfirmations)).to.be.revertedWith(
-                'Invalid number of required confirmations'
+            await expect(factory.createMultiSigWallet(owners, numConfirmations)).to.be.revertedWithCustomError(
+                factory,
+                'InvalidNumberOfRequiredConfirmations'
             );
         })
         it('Succeed', async () => {
             const numConfirmations = 1;
-            // const signer = ethers.getSigner(owners[0]);
-            await expect(factory.createMultiSigWallet(owners, numConfirmations)).not.to.be.reverted;
-            // await expect(factory.createMultiSigWallet(owners, numConfirmations)).to.emit(
-            //     factory, "MultiSigWalletCreated"
-            // ).withArgs(owners[0], )
+            const signer = await ethers.getSigner(owners[0]);
+            await expect(factory.connect(signer).createMultiSigWallet(owners, numConfirmations)).to.emit(
+                factory,
+                "MultiSigWalletCreated"
+            ).withArgs(signer.address, (await factory.getWalletsByCreater(signer.address))[0]);
         })
     })
 
@@ -61,17 +64,21 @@ describe('MultiSigWalletFactory', async () => {
         ];
         const numConfirmations = 2;
         let signer: any;
+        let receipt: any;
 
-        before(async () => {
+        beforeEach(async () => {
             signer = await ethers.getSigner(owners[0]);
-            await factory.connect(signer).createMultiSigWallet(owners, numConfirmations);
-            // const walletAddress = await tx.wait();
-            // console.log("walletAddr=", walletAddress)
+            const tx = await factory.connect(signer).createMultiSigWallet(owners, numConfirmations);
+            receipt = await tx.wait();
         })
 
         it('succeed', async () => {
-            const wallets = await factory.getWalletsByCreater(signer.address);
-            console.log("wallets=", wallets);
+            const [newWallet] = await factory.getWalletsByCreater(signer.address);
+            expect(receipt.events[0].args.wallet).to.equal(newWallet);
         })
+    })
+
+    describe('#addOwnerForWallet', () => {
+        
     })
 })

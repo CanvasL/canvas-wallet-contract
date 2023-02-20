@@ -1,33 +1,41 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 import {MultiSigWallet} from "../wallets/MultiSigWallet.sol";
-import {IWalletFactoryEvents} from "../events/IWalletFactoryEvents.sol";
-import {IWalletSettings} from "../interface/IWalletSettings.sol";
+import {IMultiSigWalletFactory} from "../interface/IMultiSigWalletFactory.sol";
+import {IMultiSigWallet} from "../interface/IMultiSigWallet.sol";
 
 // Uncomment this line to use console.log
 import "hardhat/console.sol";
 
-contract MultiSigWalletFactory is IWalletFactoryEvents {
+contract MultiSigWalletFactory is IMultiSigWalletFactory {
     mapping(address => address[]) public walletsByCreater;
     mapping(address => bool) public isMultiSigWallet;
 
     modifier onlyMultiSigWallet() {
-        require(isMultiSigWallet[msg.sender], "Invalid caller");
+        if(isMultiSigWallet[msg.sender]) {
+            revert NotMultiSigWallet();
+        }
         _;
     }
 
     function createMultiSigWallet(
         address[] calldata _owners,
         uint _numConfirmationsRequired
-    ) public returns (address) {
-        require(_owners.length > 0, "The wallet must have at least one owner");
-        for (uint i = 0; i < _owners.length; i++) {
-            require(_owners[i] != address(0), "Invalid owner address");
+    ) public {
+        if(_owners.length == 0) {
+            revert InvalidOwnerLength();
         }
-        require(
-            _numConfirmationsRequired <= _owners.length,
-            "Invalid number of required confirmations"
-        );
+        for (uint i = 0; i < _owners.length; i++) {
+            if(_owners[i] == address(0)) {
+                revert ZeroAddress();
+            }
+        }
+        if (_numConfirmationsRequired == 0 || _numConfirmationsRequired > _owners.length) {
+            revert InvalidNumberOfRequiredConfirmations(
+                _owners.length,
+                _numConfirmationsRequired
+            );
+        }
 
         MultiSigWallet newWallet = new MultiSigWallet(
             _owners,
@@ -39,8 +47,6 @@ contract MultiSigWalletFactory is IWalletFactoryEvents {
         isMultiSigWallet[address(newWallet)] = true;
 
         emit MultiSigWalletCreated(msg.sender, address(newWallet));
-
-        return address(newWallet);
     }
 
     function getWalletsByCreater(
@@ -50,18 +56,21 @@ contract MultiSigWalletFactory is IWalletFactoryEvents {
     }
 
     function addOwnerForWallet(address _owner) external onlyMultiSigWallet {
-        IWalletSettings(msg.sender).addOwner(_owner);
+        IMultiSigWallet(msg.sender).addOwner(_owner);
+        emit OwnerAdded(msg.sender, _owner);
     }
 
     function deleteOwnerForWallet(address _owner) external onlyMultiSigWallet {
-        IWalletSettings(msg.sender).deleteOwner(_owner);
+        IMultiSigWallet(msg.sender).deleteOwner(_owner);
+        emit OwnerDeleted(msg.sender, _owner);
     }
 
     function setNumConfirmationsRequiredForWallet(
         uint _numConfirmationsRequired
     ) external onlyMultiSigWallet {
-        IWalletSettings(msg.sender).setNumConfirmationsRequired(
+        IMultiSigWallet(msg.sender).setNumConfirmationsRequired(
             _numConfirmationsRequired
         );
+        emit ConfirmationsRequiredSet(msg.sender, _numConfirmationsRequired);
     }
 }

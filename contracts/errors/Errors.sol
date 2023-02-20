@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-error NotOwner();
-error TxDoesNotExist();
-error TxAlreadyExecuted();
-error TxAlreadyConfirmed();
-error InvalidNumConfirmations();
-error InvalidOwner();
+interface Errors {
+    error ZeroAddress();
+    error InvalidOwnerLength();
+    error InvalidNumberOfRequiredConfirmations(
+        uint256 maxNum,
+        uint256 inputNum
+    );
+}
