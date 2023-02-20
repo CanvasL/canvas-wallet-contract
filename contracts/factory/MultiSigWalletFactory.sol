@@ -4,24 +4,26 @@ import {MultiSigWallet} from "../wallets/MultiSigWallet.sol";
 import {IWalletFactoryEvents} from "../events/IWalletFactoryEvents.sol";
 import {IWalletSettings} from "../interface/IWalletSettings.sol";
 
+// Uncomment this line to use console.log
+import "hardhat/console.sol";
+
 contract MultiSigWalletFactory is IWalletFactoryEvents {
     mapping(address => address[]) public walletsByCreater;
     mapping(address => bool) public isMultiSigWallet;
 
     modifier onlyMultiSigWallet() {
-        require(isMultiSigWallet[msg.sender], "invalid caller");
+        require(isMultiSigWallet[msg.sender], "Invalid caller");
         _;
     }
 
     function createMultiSigWallet(
         address[] calldata _owners,
         uint _numConfirmationsRequired
-    ) public {
+    ) public returns (address) {
         require(_owners.length > 0, "The wallet must have at least one owner");
         for (uint i = 0; i < _owners.length; i++) {
             require(_owners[i] != address(0), "Invalid owner address");
         }
-
         require(
             _numConfirmationsRequired <= _owners.length,
             "Invalid number of required confirmations"
@@ -37,6 +39,8 @@ contract MultiSigWalletFactory is IWalletFactoryEvents {
         isMultiSigWallet[address(newWallet)] = true;
 
         emit MultiSigWalletCreated(msg.sender, address(newWallet));
+
+        return address(newWallet);
     }
 
     function getWalletsByCreater(
