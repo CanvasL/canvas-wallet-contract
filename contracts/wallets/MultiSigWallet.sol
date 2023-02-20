@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 import {IMultiSigWallet} from "../interface/IMultiSigWallet.sol";
 
 // Uncomment this line to use console.log
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract MultiSigWallet is IMultiSigWallet {
     address immutable factory;
@@ -34,35 +34,35 @@ contract MultiSigWallet is IMultiSigWallet {
     }
 
     modifier onlyFactory() {
-        if(msg.sender != factory) {
+        if (msg.sender != factory) {
             revert NotFactory();
         }
         _;
     }
 
     modifier onlyOwner() {
-        if(!isOwner[msg.sender]) {
+        if (!isOwner[msg.sender]) {
             revert NotOwner();
         }
         _;
     }
 
     modifier txExists(uint _txIndex) {
-        if(_txIndex >= transactions.length) {
+        if (_txIndex >= transactions.length) {
             revert TransactionNotExsits(_txIndex);
         }
         _;
     }
 
     modifier notExecuted(uint _txIndex) {
-        if(transactions[_txIndex].executed) {
+        if (transactions[_txIndex].executed) {
             revert TransactionAlreadyExecuted(_txIndex);
         }
         _;
     }
 
     modifier notConfirmed(uint _txIndex) {
-        if(isConfirmed[_txIndex][msg.sender]) {
+        if (isConfirmed[_txIndex][msg.sender]) {
             revert TransactionAlreadyConfirmed(_txIndex);
         }
         _;
@@ -150,10 +150,13 @@ contract MultiSigWallet is IMultiSigWallet {
     function getOwners() public view returns (address[] memory) {
         address[] memory _owners = new address[](ownersCount);
         uint j = 0;
+        console.log("owners: ");
         for (uint i = 0; i < owners.length; i++) {
-            if (isOwner[owners[i]]) {
-                _owners[j] = owners[i];
+            address owner = owners[i];
+            if (isOwner[owner]) {
+                _owners[j] = owner;
                 j++;
+                console.log("%s,", owner);
             }
         }
         return _owners;
@@ -235,7 +238,7 @@ contract MultiSigWallet is IMultiSigWallet {
     ) public onlyOwner txExists(_txIndex) notExecuted(_txIndex) {
         Transaction storage transaction = transactions[_txIndex];
 
-        if(!isConfirmed[_txIndex][msg.sender]) {
+        if (!isConfirmed[_txIndex][msg.sender]) {
             revert TransactionNotConfirmed(_txIndex, msg.sender);
         }
 

@@ -79,6 +79,6 @@ describe('MultiSigWalletFactory', async () => {
     })
 
     describe('#addOwnerForWallet', () => {
-        
+
     })
 })
