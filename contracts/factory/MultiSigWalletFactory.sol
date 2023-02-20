@@ -5,14 +5,14 @@ import {IMultiSigWalletFactory} from "../interface/IMultiSigWalletFactory.sol";
 import {IMultiSigWallet} from "../interface/IMultiSigWallet.sol";
 
 // Uncomment this line to use console.log
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract MultiSigWalletFactory is IMultiSigWalletFactory {
     mapping(address => address[]) public walletsByCreater;
     mapping(address => bool) public isMultiSigWallet;
 
     modifier onlyMultiSigWallet() {
-        if(isMultiSigWallet[msg.sender]) {
+        if(!isMultiSigWallet[msg.sender]) {
             revert NotMultiSigWallet();
         }
         _;
