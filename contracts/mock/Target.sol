@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
-import "hardhat/console.sol";
+
+// import "hardhat/console.sol";
 
 contract Target {
     uint256 public num = 0;
@@ -11,7 +12,5 @@ contract Target {
         num += _num;
     }
 
-    receive() payable external {
-        console.log("received %s", msg.value);
-    }
+    receive() external payable {}
 }

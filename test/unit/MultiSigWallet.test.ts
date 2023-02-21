@@ -17,15 +17,15 @@ describe("MultiSigWallet", () => {
     before(async () => {
         MultiSigWallet = await ethers.getContractFactory('MultiSigWallet');
         Target = await ethers.getContractFactory('Target');
-    })
-
-    beforeEach(async () => {
-        wallet = await MultiSigWallet.deploy(OWNERS, 2);
-        target = await Target.deploy();
 
         [signer1, signer2, signer3, newSigner] = await Promise.all(
             [...OWNERS, NEW_OWNER].map(async (addr) => await ethers.getSigner(addr))
         );
+    })
+
+    beforeEach(async () => {
+        target = await Target.deploy();
+        wallet = await MultiSigWallet.deploy(OWNERS, 2);
     })
 
     describe('#addOwner()', () => {
@@ -250,6 +250,11 @@ describe("MultiSigWallet", () => {
     describe('#executeTransaction', () => {
         context('When transfer funds', () => {
             beforeEach(async () => {
+                await signer3.sendTransaction({
+                    to: wallet.address,
+                    value: BigNumber.from(10).pow(20)
+                });
+
                 await wallet.connect(signer1).submitTransaction(
                     target.address,
                     BigNumber.from(10).pow(18),
@@ -274,20 +279,17 @@ describe("MultiSigWallet", () => {
 
             it('Should give a unexecuted transaction', async () => {
                 await wallet.connect(signer2).confirmTransaction(0);
-                // await wallet.connect(signer2).executeTransaction(0);
+                await wallet.connect(signer2).executeTransaction(0);
 
-                // await expect(wallet.executeTransaction(0)).to.be.revertedWithCustomError(
-                //     wallet,
-                //     'TransactionAlreadyExecuted'
-                // ).withArgs(
-                //     0
-                // );
+                await expect(wallet.executeTransaction(0)).to.be.revertedWithCustomError(
+                    wallet,
+                    'TransactionAlreadyExecuted'
+                ).withArgs(
+                    0
+                );
             })
 
             it('Succeed', async () => {
-                // const balance = await ethers.provider.getBalance(signer1.address);
-                // console.log(`当前帐户的余额为：${balance.toString()}`);
-
                 await wallet.connect(signer2).confirmTransaction(0);
                 await expect(wallet.connect(signer1).executeTransaction(0)).to.emit(
                     wallet,
@@ -353,5 +355,21 @@ describe("MultiSigWallet", () => {
             })
         })
 
+    })
+
+    describe('#receive', () => {
+        it('Succeed', async () => {
+            await expect(signer3.sendTransaction({
+                to: wallet.address,
+                value: BigNumber.from(10).pow(18)
+            })).to.emit(
+                wallet,
+                'Deposit'
+            ).withArgs(
+                signer3.address,
+                BigNumber.from(10).pow(18),
+                BigNumber.from(10).pow(18)
+            )
+        })
     })
 })
