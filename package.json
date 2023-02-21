@@ -3,7 +3,7 @@
   "scripts": {
     "test": "yarn hardhat test",
     "build": "yarn hardhat compile",
-    "deploy": "yarn hardhat run ./scripts/deploy.ts --network"
+    "deploy": "yarn hardhat run ./scripts/deploy.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
